@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Mario Clone</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #controlBar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px 6px 0 0;
+      width: 800px;
+      font-family: monospace;
+    }
+
+    #controlBar button {
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-family: monospace;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    #controlBar button:hover {
+      background: #3a3a3a;
+    }
+
+    #controlBar button:active {
+      background: #444;
+    }
+
+    #btnAI.ai-on {
+      background: #1a4a1a;
+      border-color: #4caf50;
+      color: #4caf50;
+    }
+
+    #aiStatus {
+      color: #aaa;
+      font-family: monospace;
+      font-size: 12px;
+      margin-left: 4px;
+    }
+
+    #aiStatus.ai-on {
+      color: #4caf50;
+    }
+
+    #gameCanvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="controlBar">
+    <button id="btnStart" onclick="Game.startGame()">Start Game</button>
+    <button id="btnAI" onclick="toggleAI()">AI Mode: OFF</button>
+    <span id="aiStatus">AI: OFF</span>
+  </div>
+  <canvas id="gameCanvas" width="800" height="450"></canvas>
+
+  <script src="mario.js"></script>
+  <script src="level.js"></script>
+  <script src="entities.js"></script>
+  <script src="game.js"></script>
+  <script src="ai-learner/ai-brain.js" defer></script>
+
+  <script>
+    var _aiMode    = false;
+    var _aiLoaded  = false;
+    var _statusInterval = null;
+
+    function ensureAILoaded(cb) {
+      if (_aiLoaded) { cb(); return; }
+      // ai-brain.js is deferred — wait for it if not yet available
+      var check = setInterval(function () {
+        if (window.AIBrain) {
+          _aiLoaded = true;
+          clearInterval(check);
+          cb();
+        }
+      }, 50);
+    }
+
+    function toggleAI() {
+      var btn    = document.getElementById('btnAI');
+      var status = document.getElementById('aiStatus');
+
+      if (!_aiMode) {
+        // Turn ON
+        ensureAILoaded(function () {
+          _aiMode = true;
+          btn.textContent = 'AI Mode: ON';
+          btn.classList.add('ai-on');
+
+          if (Game.state !== 'playing') Game.startGame();
+          AIBrain.start(Game, Mario, Entities);
+
+          // Update status bar
+          _statusInterval = setInterval(function () {
+            if (!_aiMode) return;
+            status.textContent =
+              'AI: ON | Episode: ' + AIBrain.getEpisode() +
+              ' | Best score: ' + AIBrain.getBestScore();
+            status.classList.add('ai-on');
+          }, 500);
+        });
+      } else {
+        // Turn OFF
+        _aiMode = false;
+        btn.textContent = 'AI Mode: OFF';
+        btn.classList.remove('ai-on');
+        status.textContent = 'AI: OFF';
+        status.classList.remove('ai-on');
+        if (window.AIBrain) AIBrain.stop();
+        if (_statusInterval) { clearInterval(_statusInterval); _statusInterval = null; }
+      }
+    }
+  </script>
+</body>
+</html>
