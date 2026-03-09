@@ -89,6 +89,7 @@
   <script>
     var _aiMode    = false;
     var _aiLoaded  = false;
+    var _weightsPromise = null;
     var _statusInterval = null;
 
     function ensureAILoaded(cb) {
@@ -110,21 +111,29 @@
       if (!_aiMode) {
         // Turn ON
         ensureAILoaded(function () {
-          _aiMode = true;
-          btn.textContent = 'AI Mode: ON';
-          btn.classList.add('ai-on');
+          if (!_weightsPromise || !AIBrain.hasWeights()) {
+            _weightsPromise = AIBrain.loadWeights('ai-learner/weights.json');
+          }
+          _weightsPromise.finally(function () {
+            _aiMode = true;
+            btn.textContent = 'AI Mode: ON';
+            btn.classList.add('ai-on');
 
-          if (Game.state !== 'playing') Game.startGame();
-          AIBrain.start(Game, Mario, Entities);
+            if (Game.state !== 'playing') Game.startGame();
+            AIBrain.start(Game, Mario, Entities);
 
-          // Update status bar
-          _statusInterval = setInterval(function () {
-            if (!_aiMode) return;
-            status.textContent =
-              'AI: ON | Episode: ' + AIBrain.getEpisode() +
-              ' | Best score: ' + AIBrain.getBestScore();
-            status.classList.add('ai-on');
-          }, 500);
+            // Update status bar
+            _statusInterval = setInterval(function () {
+              if (!_aiMode) return;
+              status.textContent =
+                'AI: ON | Episode: ' + AIBrain.getEpisode() +
+                ' | Trained: ' + AIBrain.getTrainedEpisodes() +
+                ' | eps: ' + AIBrain.getEpsilon().toFixed(2) +
+                ' | Last R: ' + AIBrain.getLastEpisodeReturn().toFixed(1) +
+                ' | Best score: ' + AIBrain.getBestScore();
+              status.classList.add('ai-on');
+            }, 500);
+          });
         });
       } else {
         // Turn OFF
